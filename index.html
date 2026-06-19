@@ -504,6 +504,38 @@
       background: #fafbfc;
     }
 
+    .touch-controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      width: min(100%, 318px);
+      justify-self: center;
+    }
+
+    .touch-control {
+      min-width: 0;
+      min-height: 44px;
+      padding: 0;
+      border-color: var(--line);
+      background: #fff;
+      color: var(--ink);
+      font-size: 20px;
+      line-height: 1;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .touch-control.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .touch-control:active {
+      transform: translateY(1px);
+    }
+
     .check-status {
       min-height: 24px;
       padding: 6px 8px;
@@ -11083,6 +11115,24 @@
       return classes.join(" ");
     }
 
+    function touchControlsHtml() {
+      const controls = [
+        ["rotate-left", "↺", "左回転"],
+        ["soft-drop", "↓", "ソフトドロップ"],
+        ["rotate-right", "↻", "右回転"],
+        ["move-left", "←", "左へ移動"],
+        ["hard-drop", "↑", "ハードドロップ", "primary"],
+        ["move-right", "→", "右へ移動"]
+      ];
+      return `
+        <div class="touch-controls" aria-label="スマートフォン用操作ボタン">
+          ${controls.map(([action, label, ariaLabel, extraClass]) => `
+            <button type="button" class="touch-control${extraClass ? ` ${extraClass}` : ""}" data-control="${action}" aria-label="${ariaLabel}">${label}</button>
+          `).join("")}
+        </div>
+      `;
+    }
+
     function problemSelectorHtml() {
       return `
         <div class="problem-picker">
@@ -11161,9 +11211,11 @@
             <div class="key-help">
               <span>← → 移動</span>
               <span>Z / X 回転</span>
+              <span>↓ ソフトドロップ</span>
               <span>↑ ハードドロップ</span>
             </div>
             ${userBoardHtml(p)}
+            ${touchControlsHtml()}
             ${statusHtml(p)}
           </div>
           <div class="actions">
@@ -11211,6 +11263,28 @@
       const selectedProblem = event.target.closest("[data-select-problem]");
       const clearHistory = event.target.closest("[data-clear-history]");
       const selectedGroup = event.target.closest("[data-select-group]");
+      const selectedControl = event.target.closest("[data-control]");
+
+      if (selectedControl) {
+        const problem = currentProblem();
+        const action = selectedControl.dataset.control;
+        if (action === "move-left") {
+          moveGhost(problem, -1);
+        } else if (action === "move-right") {
+          moveGhost(problem, 1);
+        } else if (action === "soft-drop") {
+          softDrop(problem);
+        } else if (action === "hard-drop") {
+          ensureHover(problem);
+          commitGhost(problem);
+          updateUserArea(problem.id);
+        } else if (action === "rotate-left") {
+          rotateActive(problem, -1);
+        } else if (action === "rotate-right") {
+          rotateActive(problem, 1);
+        }
+        return;
+      }
 
       if (selectedGroup) {
         switchProblemSet(selectedGroup.dataset.selectGroup);
@@ -11279,6 +11353,9 @@
       } else if (event.key === "ArrowRight") {
         event.preventDefault();
         moveGhost(problem, 1);
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        softDrop(problem);
       } else if (event.key === "ArrowUp") {
         event.preventDefault();
         ensureHover(problem);
