@@ -11245,6 +11245,8 @@
               <span>Z / X 回転</span>
               <span>↓ ソフトドロップ</span>
               <span>↑ ハードドロップ</span>
+              <span>Space 次の問題</span>
+              <span>Esc リセット</span>
             </div>
             ${userBoardHtml(p)}
             ${touchControlsHtml()}
@@ -11285,6 +11287,24 @@
         </aside>
         ${problemCardHtml(problem)}
       `;
+    }
+
+    function resetProblem(problem) {
+      unmarkSolved(problem.id);
+      const rotation = Object.fromEntries(pieceSequence(problem).map((piece) => [piece, 0]));
+      userStates[problem.id] = {
+        rows: problem.start.slice(),
+        tool: problem.current[0],
+        rotation,
+        step: 0,
+        hover: centeredHover(problem.current[0], rotation[problem.current[0]]),
+        lockedPlacement: null,
+        done: false,
+        message: "未判定",
+        tone: ""
+      };
+      updateUserArea(problem.id);
+      updateProblemSelector();
     }
 
     document.addEventListener("click", (event) => {
@@ -11350,21 +11370,7 @@
 
       if (clearId) {
         const problem = problems.find((item) => item.id === Number(clearId));
-        unmarkSolved(problem.id);
-        const rotation = Object.fromEntries(pieceSequence(problem).map((piece) => [piece, 0]));
-        userStates[problem.id] = {
-          rows: problem.start.slice(),
-          tool: problem.current[0],
-          rotation,
-          step: 0,
-          hover: centeredHover(problem.current[0], rotation[problem.current[0]]),
-          lockedPlacement: null,
-          done: false,
-          message: "未判定",
-          tone: ""
-        };
-        updateUserArea(problem.id);
-        updateProblemSelector();
+        resetProblem(problem);
       }
 
       if (answerId) document.getElementById(`answer-${answerId}`).classList.add("open");
@@ -11378,7 +11384,16 @@
       const state = ensureUserState(problem);
       const key = event.key.toLowerCase();
 
-      if (event.key === "ArrowLeft") {
+      if (event.code === "Space") {
+        event.preventDefault();
+        if (!event.repeat && currentProblemIndex < problems.length - 1) {
+          currentProblemIndex += 1;
+          render();
+        }
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        if (!event.repeat) resetProblem(problem);
+      } else if (event.key === "ArrowLeft") {
         event.preventDefault();
         moveGhost(problem, -1);
       } else if (event.key === "ArrowRight") {
